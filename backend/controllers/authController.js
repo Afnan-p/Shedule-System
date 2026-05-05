@@ -21,6 +21,16 @@ const generateToken = (id) => {
 export const register = asyncHandler(async (req, res) => {
   const { name, email, password, role, branch } = req.body;
 
+  // Check if user exists
+  const userExists = await User.findOne({ email: email.toLowerCase().trim() });
+  if (userExists) {
+    return res.status(400).json({
+      success: false,
+      error: 'User already exists',
+      code: 'USER_ALREADY_EXISTS'
+    });
+  }
+
   // Hash password
   const salt = await bcrypt.genSalt(10);
   const passwordHash = await bcrypt.hash(password, salt);
@@ -30,7 +40,7 @@ export const register = asyncHandler(async (req, res) => {
     name,
     email,
     passwordHash,
-    role: role || 'teacher',
+    role: role || 'admin',
     branch
   });
 
@@ -59,6 +69,7 @@ export const register = asyncHandler(async (req, res) => {
     }
   });
 });
+
 
 /**
  * @desc    Login user
