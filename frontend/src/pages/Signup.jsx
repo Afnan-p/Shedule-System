@@ -5,31 +5,38 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../components/ui/Card';
 import toast from 'react-hot-toast';
-import { LogIn, Loader2, ShieldCheck } from 'lucide-react';
+import { LogIn, UserPlus, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-const Login = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+const Signup = () => {
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    password: '',
+    branch: '',
+  });
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
+  const { register } = useAuth();
   const navigate = useNavigate();
+
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.id]: e.target.value });
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!email || !password) {
-      toast.error('Please enter email and password');
+    if (!formData.name || !formData.email || !formData.password || !formData.branch) {
+      toast.error('Please fill in all fields');
       return;
     }
 
     setLoading(true);
     try {
-      await login(email, password);
-      toast.success('Welcome back!');
+      await register(formData);
+      toast.success('Account created successfully!');
       navigate('/');
     } catch (error) {
-      const errorMessage = error.response?.data?.error || 'Login failed. Please check your credentials.';
-      toast.error(errorMessage);
+      toast.error(error.response?.data?.error || 'Registration failed');
     } finally {
       setLoading(false);
     }
@@ -47,38 +54,55 @@ const Login = () => {
           <CardHeader className="space-y-1 text-center">
             <div className="flex justify-center mb-2">
               <div className="p-3 rounded-2xl bg-primary/10 text-primary">
-                <ShieldCheck size={32} />
+                <UserPlus size={32} />
               </div>
             </div>
-            <CardTitle className="text-2xl font-bold tracking-tight">Welcome back</CardTitle>
+            <CardTitle className="text-2xl font-bold tracking-tight">Create an account</CardTitle>
             <CardDescription>
-              Enter your credentials to access your dashboard
+              Enter your details to register for the system
             </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <label htmlFor="name" className="text-sm font-medium leading-none">Full Name</label>
+                <Input
+                  id="name"
+                  placeholder="John Doe"
+                  value={formData.name}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
               <div className="space-y-2">
                 <label htmlFor="email" className="text-sm font-medium leading-none">Email</label>
                 <Input
                   id="email"
                   type="email"
                   placeholder="name@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  value={formData.email}
+                  onChange={handleChange}
                   required
                 />
               </div>
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <label htmlFor="password" className="text-sm font-medium leading-none">Password</label>
-                  <Link to="#" className="text-sm text-primary hover:underline">Forgot password?</Link>
-                </div>
+                <label htmlFor="branch" className="text-sm font-medium leading-none">Branch</label>
+                <Input
+                  id="branch"
+                  placeholder="Main Branch"
+                  value={formData.branch}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <label htmlFor="password" className="text-sm font-medium leading-none">Password</label>
                 <Input
                   id="password"
                   type="password"
                   placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  value={formData.password}
+                  onChange={handleChange}
                   required
                 />
               </div>
@@ -86,19 +110,19 @@ const Login = () => {
                 {loading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Signing in...
+                    Creating account...
                   </>
                 ) : (
-                  'Sign In'
+                  'Create Account'
                 )}
               </Button>
             </form>
           </CardContent>
           <CardFooter className="flex flex-col space-y-4">
             <div className="text-sm text-center text-muted-foreground">
-              Don't have an account?{' '}
-              <Link to="/signup" className="text-primary hover:underline font-medium">
-                Create an account
+              Already have an account?{' '}
+              <Link to="/login" className="text-primary hover:underline font-medium">
+                Sign in
               </Link>
             </div>
           </CardFooter>
@@ -108,4 +132,4 @@ const Login = () => {
   );
 };
 
-export default Login;
+export default Signup;

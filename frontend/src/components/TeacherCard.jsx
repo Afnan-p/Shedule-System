@@ -1,5 +1,7 @@
-import { BookOpen, Edit3, Trash2, CalendarClock } from 'lucide-react';
+import { BookOpen, Edit3, Trash2, CalendarClock, MoreVertical } from 'lucide-react';
 import TimeSlot from './TimeSlot';
+import { cn } from './ui/Button';
+import { motion } from 'framer-motion';
 
 const TeacherCard = ({
   teacher,
@@ -21,102 +23,109 @@ const TeacherCard = ({
   const canDelete = user?.role === 'admin';
 
   return (
-    <div className="flex bg-white border border-gray-500 rounded-2xl shadow-sm overflow-hidden" >
+    <div className="flex bg-card border rounded-2xl shadow-sm overflow-hidden group/teacher transition-all duration-300 hover:shadow-premium border-border/60 hover:border-primary/20">
       {/* Teacher info column */}
-      <div className="w-52 border-r border-gray-100 p-4 bg-gradient-to-b from-gray-50 to-white relative" >
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <h3 className="font-medium text-gray-900 text-sm">{teacher.name}</h3>
-        <div className="mt-1 flex flex-wrap gap-1">
-          {teacher.subjects.slice(0, 2).map((subject) => (
-            <span
-              key={subject}
-              className="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded flex items-center"
-            >
-              <BookOpen className="w-3 h-3 mr-1" />
-              {subject}
-            </span>
-          ))}
-          {teacher.subjects.length > 2 && (
-            <span className="text-xs text-gray-500">+{teacher.subjects.length - 2}</span>
-          )}
-        </div>
-            <div className="mt-1 text-xs text-gray-500">{teacher.branch}</div>
-          </div>
-          {canEdit && (
-            <div className="flex items-center space-x-1 ml-2">
-              {onEditTeacher && (
-                <button
-                  onClick={() => onEditTeacher(teacher)}
-                  className="p-1.5 text-gray-600 hover:bg-gray-100 rounded transition-colors"
-                  title="Edit teacher details"
-                >
-                  <Edit3 className="w-4 h-4" />
-                </button>
-              )}
-              {onEditAvailability && (
-                <button
-                  onClick={() => onEditAvailability(teacher)}
-                  className="p-1.5 text-gray-600 hover:bg-gray-100 rounded transition-colors"
-                  title="Edit availability"
-                >
-                  <CalendarClock className="w-4 h-4" />
-                </button>
-              )}
-              {canDelete && onDeleteTeacher && (
-                <button
-                  onClick={() => onDeleteTeacher(teacher)}
-                  className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
-                  title="Delete teacher"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              )}
+      <div className="w-56 border-r border-border/40 p-4 bg-muted/5 flex flex-col justify-between">
+        <div className="space-y-3">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-bold shadow-sm shrink-0">
+              {teacher.name?.[0]?.toUpperCase() || 'T'}
             </div>
-          )}
+            <div className="min-w-0">
+              <h3 className="font-bold text-sm tracking-tight truncate">{teacher.name}</h3>
+              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{teacher.branch}</p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-1.5">
+            {teacher.subjects.slice(0, 2).map((subject) => (
+              <span
+                key={subject}
+                className="text-[10px] px-2 py-0.5 bg-primary/5 text-primary rounded-full font-bold flex items-center border border-primary/10"
+              >
+                <BookOpen size={10} className="mr-1" />
+                {subject}
+              </span>
+            ))}
+            {teacher.subjects.length > 2 && (
+              <span className="text-[10px] font-bold text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">
+                +{teacher.subjects.length - 2}
+              </span>
+            )}
+          </div>
         </div>
+
+        {canEdit && (
+          <div className="flex items-center gap-1 pt-4 opacity-0 group-hover/teacher:opacity-100 transition-opacity">
+            <button
+              onClick={() => onEditTeacher(teacher)}
+              className="p-1.5 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition-all"
+              title="Edit teacher"
+            >
+              <Edit3 size={14} />
+            </button>
+            <button
+              onClick={() => onEditAvailability(teacher)}
+              className="p-1.5 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition-all"
+              title="Availability"
+            >
+              <CalendarClock size={14} />
+            </button>
+            {canDelete && (
+              <button
+                onClick={() => onDeleteTeacher(teacher)}
+                className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-all"
+                title="Delete"
+              >
+                <Trash2 size={14} />
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Day columns */}
-      {days.map((day) => {
-        const dayTimeSlots = getTimeSlotsForDay(day);
-        return (
-          <div key={day} className="flex-1 border-r border-gray-100 last:border-r-0 bg-gray-50">
-            <div className="flex flex-col">
-              {dayTimeSlots.map((slot) => {
-                const key = `${teacher._id}-${day}-${slot}`;
-                const scheduleItem = scheduleMap[key];
+      <div className="flex flex-1 overflow-x-auto">
+        {days.map((day) => {
+          const dayTimeSlots = getTimeSlotsForDay(day);
+          return (
+            <div key={day} className="flex-1 min-w-[120px] border-r border-border/30 last:border-r-0">
+              <div className="flex flex-col h-full">
+                {dayTimeSlots.map((slot) => {
+                  const key = `${teacher._id}-${day}-${slot}`;
+                  const scheduleItem = scheduleMap[key];
 
-                // Teachers are fully available by default; entries mark unavailable times
-                const isUnavailable = teacher.availability?.some(
-                  (entry) => entry.day === day && entry.slot === slot
-                );
-                const isAvailable = !isUnavailable;
+                  // Teachers are fully available by default; entries mark unavailable times
+                  const isUnavailable = teacher.availability?.some(
+                    (entry) => entry.day === day && entry.slot === slot
+                  );
+                  const isAvailable = !isUnavailable;
 
-                return (
-                  <TimeSlot
-                    key={slot}
-                    day={day}
-                    slot={slot}
-                    teacherId={teacher._id}
-                    scheduleItem={scheduleItem}
-                    isAvailable={isAvailable}
-                    onDrop={onDrop}
-                    onRemoveBatch={onRemoveBatch}
-                    onMoveSchedule={onMoveSchedule}
-                    onScheduleEdit={onScheduleEdit}
-                    onAssignRequest={onAssignBatch}
-                    canManageSchedule={canManageSchedule}
-                  />
-                );
-              })}
+                  return (
+                    <div key={slot} className="flex-1 border-b border-border/20 last:border-b-0 min-h-[80px]">
+                      <TimeSlot
+                        day={day}
+                        slot={slot}
+                        teacherId={teacher._id}
+                        scheduleItem={scheduleItem}
+                        isAvailable={isAvailable}
+                        onDrop={onDrop}
+                        onRemoveBatch={onRemoveBatch}
+                        onMoveSchedule={onMoveSchedule}
+                        onScheduleEdit={onScheduleEdit}
+                        onAssignRequest={onAssignBatch}
+                        canManageSchedule={canManageSchedule}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
     </div>
   );
 };
 
 export default TeacherCard;
-

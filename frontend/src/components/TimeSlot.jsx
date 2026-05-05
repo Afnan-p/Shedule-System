@@ -1,8 +1,9 @@
 import { useDrop, useDrag } from 'react-dnd';
-import { X, GripVertical, Clock4 } from 'lucide-react';
+import { X, GripVertical, Clock4, Plus, UserX } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useRef } from 'react';
-import { getBatchIds } from '../utils/scheduleHelpers';
+import { cn } from './ui/Button';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const TimeSlot = ({
   day,
@@ -19,10 +20,7 @@ const TimeSlot = ({
 }) => {
   const slotRef = useRef(null);
   const scheduleRef = useRef(null);
-  const currentTeacherId =
-    typeof scheduleItem?.teacherId === 'object'
-      ? scheduleItem.teacherId._id
-      : scheduleItem?.teacherId;
+  
   const batchIds =
     scheduleItem?.batchIds?.map((batch) =>
       typeof batch === 'object' ? batch._id : batch
@@ -33,35 +31,22 @@ const TimeSlot = ({
     canDrop: () => Boolean(canManageSchedule),
     drop: async (item, monitor) => {
       if (!canManageSchedule) return;
-      // Use batchIds from item if available (for multi-select), otherwise use batchId
       if (monitor.getItemType() === 'schedule') {
         if (!onMoveSchedule || !item.scheduleItemId) return;
-        if (
-          item.teacherId === teacherId &&
-          item.day === day &&
-          item.slot === slot
-        ) {
-          return;
-        }
+        if (item.teacherId === teacherId && item.day === day && item.slot === slot) return;
+        
         onMoveSchedule?.({
           scheduleItemId: item.scheduleItemId,
-          source: {
-            day: item.day,
-            slot: item.slot,
-            teacherId: item.teacherId
-          },
+          source: { day: item.day, slot: item.slot, teacherId: item.teacherId },
           target: { day, slot, teacherId }
         });
         return;
       }
 
       let incomingBatchIds = item.batchIds || [item.batchId];
-      
-      // Ensure we have at least one batch
       if (!Array.isArray(incomingBatchIds) || incomingBatchIds.length === 0) {
-        if (item.batchId) {
-          incomingBatchIds = [item.batchId];
-        } else {
+        if (item.batchId) incomingBatchIds = [item.batchId];
+        else {
           toast.error('No batch selected');
           return;
         }
@@ -72,18 +57,11 @@ const TimeSlot = ({
         return;
       }
 
-      // If there are existing batches in this slot, merge with them (avoid duplicates)
-      const existingBatchIds = batchIds;
-      
-      // Merge new batches with existing ones, removing duplicates
-      // Backend will also handle merging, but frontend merge ensures we send all at once
-      const allBatchIds = [...new Set([...existingBatchIds, ...incomingBatchIds])];
-
+      const allBatchIds = [...new Set([...batchIds, ...incomingBatchIds])];
       try {
         await onDrop?.(day, slot, teacherId, allBatchIds);
       } catch (error) {
-        console.error('Drop failed:', error);
-        toast.error('Failed to assign batches. Please try again.');
+        toast.error('Failed to assign batches');
       }
     },
     collect: (monitor) => ({
@@ -96,132 +74,101 @@ const TimeSlot = ({
     () => ({
       type: 'schedule',
       canDrag: canManageSchedule && Boolean(scheduleItem),
-      item: {
-        scheduleItemId: scheduleItem?._id,
-        day,
-        slot,
-        teacherId
-      },
-      collect: (monitor) => ({
-        isDragging: monitor.isDragging()
-      })
+      item: { scheduleItemId: scheduleItem?._id, day, slot, teacherId },
+      collect: (monitor) => ({ isDragging: monitor.isDragging() })
     }),
     [canManageSchedule, scheduleItem, day, slot, teacherId]
   );
 
   drop(slotRef);
-  if (scheduleItem) {
-    drag(scheduleRef);
-  }
-
-  const getStatusColor = () => {
-    if (scheduleItem) {
-      if (scheduleItem.batchIds?.length > 0) {
-        return 'bg-green-50 border-green-300';
-      }
-      return 'bg-yellow-50 border-yellow-300';
-    }
-    if (isAvailable) {
-      return 'bg-gray-50 border-gray-200';
-    }
-    return 'bg-red-50 border-red-200';
-  };
+  if (scheduleItem) drag(scheduleRef);
 
   return (
     <div
       ref={slotRef}
-      className={`
-        w-full min-h-[80px] p-1 border
-        ${getStatusColor()}
-        ${isOver && canDrop ? 'ring-2 ring-blue-500 ring-offset-1' : ''}
-        ${isDragging ? 'opacity-60' : 'opacity-100'}
-        transition-all duration-150
-        relative
-      `}
-    >
-      {scheduleItem?.batchIds?.length > 0 ? (
-        <div ref={scheduleRef} className="space-y-1 cursor-move pt-5">
-          <div className="absolute top-1 left-1/2 -translate-x-1/2 text-[10px] font-semibold text-gray-500 tracking-wide">
-            {slot.replace('-', ' – ')}
-          </div>
-          {canManageSchedule && onScheduleEdit && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onScheduleEdit(scheduleItem);
-              }}
-              className="absolute top-1 right-1 p-1 bg-white border border-gray-200 rounded-full shadow-sm text-gray-600 hover:bg-gray-50"
-              title="Change time / teacher"
-            >
-              <Clock4 className="w-3 h-3" />
-            </button>
-          )}
-          {canManageSchedule && (
-            <div className="absolute top-1 left-1 text-gray-400 flex items-center space-x-1 text-[10px] uppercase tracking-wide">
-              <GripVertical className="w-3 h-3" />
-              <span>Drag</span>
-            </div>
-          )}
-          {scheduleItem.batchIds.map((batch, idx) => {
-            const batchId = typeof batch === 'object' ? batch._id : batch;
-            const batchName = typeof batch === 'object' ? batch.name : 'Batch';
-            const batchSize = typeof batch === 'object' ? batch.size : 0;
-            return (
-              <div
-                key={batchId || idx}
-                className="group relative px-2 py-1 bg-white border border-gray-300 rounded text-xs hover:shadow-md transition-shadow"
-              >
-                <div className="font-medium text-gray-900 truncate">
-                  {batchName}
-                </div>
-                <div className="text-gray-500 text-[10px]">
-                  {batchSize} students
-                </div>
-                <button
-                  onClick={async () => {
-                    try {
-                      await onRemoveBatch(day, slot, teacherId, batchId);
-                    } catch (error) {
-                      console.error('Remove batch failed:', error);
-                    }
-                  }}
-                  className="absolute top-0 right-0 p-0.5 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                  title="Remove batch"
-                >
-                  <X className="w-3 h-3" />
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      ) : (
-        <div className="text-[11px] text-gray-500 text-center pt-2 space-y-2">
-          <div className="font-semibold text-gray-600">{slot.replace('-', ' – ')}</div>
-          {isAvailable ? (
-            canManageSchedule && (
-              <button
-                onClick={() => onAssignRequest?.({ day, slot, teacherId })}
-                className="px-2 py-1 text-[10px] bg-white border border-dashed border-blue-300 text-blue-600 rounded-full hover:bg-blue-50"
-              >
-                + Assign
-              </button>
-            )
-          ) : (
-            <span className="inline-flex items-center justify-center px-2 py-0.5 text-[10px] font-semibold bg-red-50 text-red-600 rounded-full border border-red-100">
-              Unavailable
-            </span>
-          )}
-        </div>
+      className={cn(
+        "relative h-full w-full p-2 transition-all duration-200 group/slot",
+        !isAvailable && !scheduleItem ? "bg-destructive/5 cursor-not-allowed" : "bg-card/30",
+        isOver && canDrop && "bg-primary/10 ring-2 ring-primary ring-inset",
+        isDragging && "opacity-40"
       )}
+    >
+      {/* Slot Time Label */}
+      <div className="flex items-center justify-between mb-1.5">
+        <span className="text-[10px] font-bold text-muted-foreground tracking-wider uppercase">
+          {slot.replace('-', ' - ')}
+        </span>
+        {canManageSchedule && isAvailable && (
+          <button
+            onClick={() => onAssignRequest?.({ day, slot, teacherId })}
+            className="opacity-0 group-hover/slot:opacity-100 p-1 rounded-md hover:bg-primary/10 text-primary transition-all"
+            title="Assign batch"
+          >
+            <Plus size={12} />
+          </button>
+        )}
+      </div>
+
+      <div className="space-y-1.5">
+        {scheduleItem?.batchIds?.length > 0 ? (
+          <div ref={scheduleRef} className="cursor-grab active:cursor-grabbing space-y-1">
+            <AnimatePresence mode="popLayout">
+              {scheduleItem.batchIds.map((batch, idx) => {
+                const batchId = typeof batch === 'object' ? batch._id : batch;
+                const batchName = typeof batch === 'object' ? batch.name : 'Batch';
+                return (
+                  <motion.div
+                    key={batchId || idx}
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    className="group/batch relative px-2 py-1.5 bg-background border rounded-lg shadow-sm hover:shadow-premium transition-all border-border/60 hover:border-primary/40"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+                      <span className="text-[11px] font-bold truncate pr-3">{batchName}</span>
+                    </div>
+                    {canManageSchedule && (
+                      <button
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          await onRemoveBatch(day, slot, teacherId, batchId);
+                        }}
+                        className="absolute right-1 top-1/2 -translate-y-1/2 p-0.5 rounded-md bg-destructive/10 text-destructive opacity-0 group-hover/batch:opacity-100 transition-opacity"
+                      >
+                        <X size={10} />
+                      </button>
+                    )}
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
+            
+            {canManageSchedule && (
+              <div className="flex items-center justify-center pt-1">
+                 <GripVertical size={12} className="text-muted-foreground/30" />
+              </div>
+            )}
+          </div>
+        ) : !isAvailable ? (
+          <div className="flex flex-col items-center justify-center py-4 opacity-40">
+            <UserX size={16} className="text-destructive mb-1" />
+            <span className="text-[10px] font-bold text-destructive uppercase">Unavailable</span>
+          </div>
+        ) : (
+          <div className="flex items-center justify-center py-4 border-2 border-dashed border-border/40 rounded-xl group-hover/slot:border-primary/20 transition-colors">
+            <span className="text-[10px] font-bold text-muted-foreground/30 group-hover/slot:text-primary/40 transition-colors">EMPTY</span>
+          </div>
+        )}
+      </div>
+
+      {/* Floating Action Button for Slot Edit */}
       {canManageSchedule && scheduleItem && (
         <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onAssignRequest?.({ day, slot, teacherId });
-          }}
-          className="absolute bottom-1 right-1 text-[9px] px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200"
+          onClick={() => onScheduleEdit?.(scheduleItem)}
+          className="absolute -bottom-2 -right-2 p-1.5 bg-background border rounded-full shadow-premium text-muted-foreground hover:text-primary opacity-0 group-hover/slot:opacity-100 transition-all z-10"
         >
-          + Assign
+          <Clock4 size={12} />
         </button>
       )}
     </div>
@@ -229,4 +176,3 @@ const TimeSlot = ({
 };
 
 export default TimeSlot;
-

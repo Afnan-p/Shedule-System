@@ -7,9 +7,15 @@ import {
   Redo2,
   LogOut,
   Settings,
-  UserPlus
+  UserPlus,
+  LayoutDashboard,
+  Calendar,
+  History
 } from 'lucide-react';
 import dayjs from 'dayjs';
+import { Button } from './ui/Button';
+import { cn } from './ui/Button';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const TopBar = ({
   user,
@@ -28,198 +34,206 @@ const TopBar = ({
   onAddTeacher
 }) => {
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
   const exportMenuRef = useRef(null);
+  const userMenuRef = useRef(null);
 
-  const weekStartStr = dayjs(weekStart).format('MMM DD, YYYY');
+  const weekStartStr = dayjs(weekStart).format('MMM DD');
   const weekEndStr = dayjs(weekStart).add(6, 'day').format('MMM DD, YYYY');
 
-  // Close export dropdown on outside click
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (exportMenuRef.current && !exportMenuRef.current.contains(event.target)) {
         setShowExportMenu(false);
       }
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
+        setShowUserMenu(false);
+      }
     };
-
-    if (showExportMenu) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-
+    document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showExportMenu]);
+  }, []);
 
   return (
-    <div className="
-      backdrop-blur-md bg-white/80 
-      border-b border-gray-200 
-      px-6 py-3 
-      shadow-sm sticky top-0 z-50
-      flex items-center justify-between
-    ">
-      {/* LEFT SECTION */}
-      <div className="flex items-center space-x-6">
-        <h1 className="text-xl font-semibold text-gray-900 tracking-wide">
-          Schedule Management
-        </h1>
-
-        {/* WEEK SELECTOR */}
-        <div className="flex items-center space-x-2 bg-gray-50 px-3 py-1.5 rounded-xl shadow-inner">
-          <button
-            onClick={() => onWeekChange(-1)}
-            className="p-1.5 hover:bg-gray-200 rounded-lg transition-colors"
-          >
-            <ChevronLeft className="w-5 h-5" />
-          </button>
-
-          <span className="text-sm font-medium text-gray-700 min-w-[200px] text-center">
-            {weekStartStr} — {weekEndStr}
-          </span>
-
-          <button
-            onClick={() => onWeekChange(1)}
-            className="p-1.5 hover:bg-gray-200 rounded-lg transition-colors"
-          >
-            <ChevronRight className="w-5 h-5" />
-          </button>
+    <nav className="sticky top-0 z-50 glass border-b px-6 py-3 flex items-center justify-between">
+      {/* Left: Brand & Navigation */}
+      <div className="flex items-center space-x-8">
+        <div className="flex items-center space-x-2">
+          <div className="bg-primary p-2 rounded-lg shadow-premium">
+            <LayoutDashboard size={20} className="text-primary-foreground" />
+          </div>
+          <span className="text-xl font-bold tracking-tight hidden md:block">Schedule<span className="text-primary">Pro</span></span>
         </div>
 
-        {/* BRANCH SELECT */}
-        <select
-          value={selectedBranch}
-          onChange={(e) => onBranchChange(e.target.value)}
-          className="
-            bg-white border border-gray-300 
-            rounded-lg px-3 py-1.5 
-            text-sm shadow-sm 
-            focus:ring-2 focus:ring-blue-500 outline-none transition-all
-          "
-        >
-          <option value="">All Branches</option>
-          {branches.map((branch) => (
-            <option key={branch} value={branch}>
-              {branch}
-            </option>
-          ))}
-        </select>
+        {/* Week Navigation */}
+        <div className="flex items-center bg-muted/50 rounded-full p-1 border shadow-sm">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={() => onWeekChange(-1)}
+            className="rounded-full h-8 w-8"
+          >
+            <ChevronLeft size={18} />
+          </Button>
+          <div className="px-4 flex items-center space-x-2 text-sm font-medium min-w-[200px] justify-center">
+            <Calendar size={14} className="text-muted-foreground" />
+            <span>{weekStartStr} — {weekEndStr}</span>
+          </div>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={() => onWeekChange(1)}
+            className="rounded-full h-8 w-8"
+          >
+            <ChevronRight size={18} />
+          </Button>
+        </div>
+
+        {/* Branch Selector */}
+        <div className="hidden lg:block">
+          <select
+            value={selectedBranch}
+            onChange={(e) => onBranchChange(e.target.value)}
+            className="bg-background/50 border rounded-full px-4 py-1.5 text-sm font-medium focus:ring-2 focus:ring-primary outline-none transition-all cursor-pointer hover:bg-muted/50"
+          >
+            <option value="">All Branches</option>
+            {branches.map((branch) => (
+              <option key={branch} value={branch}>{branch}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
-      {/* RIGHT SECTION */}
+      {/* Right: Actions & User */}
       <div className="flex items-center space-x-3">
+        {/* Undo/Redo Group */}
+        <div className="flex items-center border rounded-full p-0.5 bg-muted/30">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={onUndo} 
+            disabled={!canUndo}
+            className="rounded-full h-8 w-8"
+            title="Undo"
+          >
+            <Undo2 size={16} />
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={onRedo} 
+            disabled={!canRedo}
+            className="rounded-full h-8 w-8"
+            title="Redo"
+          >
+            <Redo2 size={16} />
+          </Button>
+        </div>
 
-        {/* Undo / Redo */}
-        <button
-          onClick={onUndo}
-          disabled={!canUndo}
-          className="
-            p-2 rounded-lg transition-all 
-            hover:bg-gray-100 
-            disabled:opacity-40 disabled:cursor-not-allowed
-          "
-          title="Undo"
-        >
-          <Undo2 className="w-5 h-5 text-gray-700" />
-        </button>
+        <div className="h-6 w-px bg-border mx-1 hidden sm:block"></div>
 
-        <button
-          onClick={onRedo}
-          disabled={!canRedo}
-          className="
-            p-2 rounded-lg transition-all 
-            hover:bg-gray-100 
-            disabled:opacity-40 disabled:cursor-not-allowed
-          "
-          title="Redo"
-        >
-          <Redo2 className="w-5 h-5 text-gray-700" />
-        </button>
+        {/* Action Buttons */}
+        <div className="hidden sm:flex items-center space-x-2">
+          <Button variant="outline" size="sm" onClick={onConfigClick} className="rounded-full gap-2 border-slate-200">
+            <Settings size={14} />
+            <span className="hidden lg:inline">Time Slots</span>
+          </Button>
+          
+          <Button variant="secondary" size="sm" onClick={onAddTeacher} className="rounded-full gap-2">
+            <UserPlus size={14} />
+            <span className="hidden lg:inline">Add Teacher</span>
+          </Button>
 
-        {/* ADMIN BUTTONS */}
-        {(user?.role === 'admin' || user?.role === 'scheduler') && (
-          <>
-            {/* TIME SLOT CONFIG */}
-            <button
-              onClick={onConfigClick}
-              className="
-                flex items-center space-x-1 px-4 py-1.5 
-                bg-gray-800 text-white 
-                rounded-lg text-sm shadow-md 
-                hover:bg-gray-900 transition-all
-              "
+          {/* Export Dropdown */}
+          <div className="relative" ref={exportMenuRef}>
+            <Button 
+              size="sm" 
+              onClick={() => setShowExportMenu(!showExportMenu)} 
+              className="rounded-full gap-2 shadow-premium"
             >
-              <Settings className="w-4 h-4" />
-              <span>Time Slots</span>
-            </button>
-
-            {/* ADD TEACHER */}
-            <button
-              onClick={onAddTeacher}
-              className="
-                flex items-center space-x-1 px-4 py-1.5 
-                bg-green-600 text-white rounded-lg text-sm 
-                shadow-md hover:bg-green-700 transition-all
-              "
-            >
-              <UserPlus className="w-4 h-4" />
-              <span>Add Teacher</span>
-            </button>
-
-            {/* EXPORT DROPDOWN */}
-            <div className="relative" ref={exportMenuRef}>
-              <button
-                onClick={() => setShowExportMenu(!showExportMenu)}
-                className="
-                  flex items-center space-x-1 px-4 py-1.5 
-                  bg-blue-600 text-white rounded-lg text-sm 
-                  shadow-md hover:bg-blue-700 transition-all
-                "
-              >
-                <Download className="w-4 h-4" />
-                <span>Export</span>
-              </button>
-
+              <Download size={14} />
+              <span className="hidden lg:inline">Export</span>
+            </Button>
+            
+            <AnimatePresence>
               {showExportMenu && (
-                <div className="
-                  absolute right-0 mt-2 w-48 
-                  bg-white border border-gray-200 rounded-xl shadow-lg 
-                  animate-fadeSlide z-50
-                ">
+                <motion.div
+                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                  className="absolute right-0 mt-2 w-48 glass rounded-xl shadow-premium overflow-hidden"
+                >
                   <button
                     onClick={() => { onExport('csv'); setShowExportMenu(false); }}
-                    className="w-full px-4 py-2 text-left hover:bg-gray-100 rounded-t-xl text-sm"
+                    className="w-full px-4 py-2.5 text-left hover:bg-muted transition-colors text-sm font-medium flex items-center space-x-2"
                   >
-                    Export as CSV
+                    <div className="w-2 h-2 rounded-full bg-green-500" />
+                    <span>Export as CSV</span>
                   </button>
                   <button
                     onClick={() => { onExport('pdf'); setShowExportMenu(false); }}
-                    className="w-full px-4 py-2 text-left hover:bg-gray-100 rounded-b-xl text-sm"
+                    className="w-full px-4 py-2.5 text-left hover:bg-muted transition-colors text-sm font-medium flex items-center space-x-2 border-t"
                   >
-                    Export as PDF
+                    <div className="w-2 h-2 rounded-full bg-red-500" />
+                    <span>Export as PDF</span>
                   </button>
-                </div>
+                </motion.div>
               )}
-            </div>
-          </>
-        )}
-
-        {/* USER PROFILE + LOGOUT */}
-        <div className="flex items-center space-x-3 border-l pl-4">
-          <div className="text-sm leading-tight text-right">
-            <div className="text-gray-800 font-medium">{user?.name}</div>
-            <div className="text-gray-500 text-xs">{user?.role}</div>
+            </AnimatePresence>
           </div>
+        </div>
 
-          <button
-            onClick={onLogout}
-            className="
-              p-2 rounded-lg hover:bg-gray-100 transition-all
-            "
-            title="Logout"
+        <div className="h-6 w-px bg-border mx-1"></div>
+
+        {/* User Dropdown */}
+        <div className="relative" ref={userMenuRef}>
+          <button 
+            onClick={() => setShowUserMenu(!showUserMenu)}
+            className="flex items-center space-x-3 p-1 pr-3 rounded-full hover:bg-muted transition-all duration-200 focus:outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-primary"
           >
-            <LogOut className="w-5 h-5 text-gray-700" />
+            <div className="h-8 w-8 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-bold text-xs shadow-sm">
+              {user?.name?.[0]?.toUpperCase() || 'U'}
+            </div>
+            <div className="text-left hidden md:block">
+              <p className="text-xs font-bold leading-none">{user?.name}</p>
+              <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mt-0.5">{user?.role}</p>
+            </div>
           </button>
+
+          <AnimatePresence>
+            {showUserMenu && (
+              <motion.div
+                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                className="absolute right-0 mt-2 w-56 glass rounded-2xl shadow-premium overflow-hidden py-1"
+              >
+                <div className="px-4 py-3 border-b mb-1">
+                  <p className="text-sm font-bold truncate">{user?.name}</p>
+                  <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+                </div>
+                <button className="w-full px-4 py-2.5 text-left hover:bg-muted transition-colors text-sm font-medium flex items-center space-x-3">
+                  <History size={16} className="text-muted-foreground" />
+                  <span>Activity Logs</span>
+                </button>
+                <button className="w-full px-4 py-2.5 text-left hover:bg-muted transition-colors text-sm font-medium flex items-center space-x-3">
+                  <Settings size={16} className="text-muted-foreground" />
+                  <span>Profile Settings</span>
+                </button>
+                <div className="border-t my-1"></div>
+                <button
+                  onClick={onLogout}
+                  className="w-full px-4 py-2.5 text-left hover:bg-destructive/10 text-destructive transition-colors text-sm font-bold flex items-center space-x-3"
+                >
+                  <LogOut size={16} />
+                  <span>Sign Out</span>
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
-    </div>
+    </nav>
   );
 };
 

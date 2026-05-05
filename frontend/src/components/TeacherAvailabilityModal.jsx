@@ -1,7 +1,11 @@
 import { useState, useEffect } from 'react';
-import { X, Plus, Trash2, Save, Edit2 } from 'lucide-react';
+import { X, Plus, Trash2, Save, Edit2, CalendarOff, AlertCircle, Loader2, Clock } from 'lucide-react';
 import { api } from '../utils/api';
 import toast from 'react-hot-toast';
+import { Button } from './ui/Button';
+import { Input } from './ui/Input';
+import { motion, AnimatePresence } from 'framer-motion';
+import { cn } from './ui/Button';
 
 const TeacherAvailabilityModal = ({ teacher, onClose, onUpdate }) => {
   const [loading, setLoading] = useState(false);
@@ -10,9 +14,7 @@ const TeacherAvailabilityModal = ({ teacher, onClose, onUpdate }) => {
   const [newSlot, setNewSlot] = useState({ day: 'Mon', slot: '08:30-11:30' });
 
   useEffect(() => {
-    if (teacher) {
-      setAvailability(teacher.availability || []);
-    }
+    if (teacher) setAvailability(teacher.availability || []);
   }, [teacher]);
 
   const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -20,217 +22,159 @@ const TeacherAvailabilityModal = ({ teacher, onClose, onUpdate }) => {
   const handleSave = async () => {
     setLoading(true);
     try {
-      const response = await api.put(`/teachers/${teacher._id}`, {
-        availability
-      });
-      toast.success('Teacher availability updated successfully');
+      const response = await api.put(`/teachers/${teacher._id}`, { availability });
+      toast.success('Availability updated');
       const updatedTeacher = response.data?.data?.teacher || null;
-      if (updatedTeacher) {
-        setAvailability(updatedTeacher.availability || []);
-      }
       if (onUpdate) onUpdate(updatedTeacher);
       onClose();
     } catch (error) {
-      toast.error(error.response?.data?.error || 'Failed to update availability');
+      toast.error('Failed to update availability');
     } finally {
       setLoading(false);
     }
   };
 
   const addSlot = () => {
-    // Check if slot already exists
-    const exists = availability.some(
-      a => a.day === newSlot.day && a.slot === newSlot.slot
-    );
-    
-    if (exists) {
-      toast.error('This slot already exists');
-      return;
-    }
-
+    const exists = availability.some(a => a.day === newSlot.day && a.slot === newSlot.slot);
+    if (exists) return toast.error('This slot is already blocked');
     setAvailability([...availability, { ...newSlot }]);
     setNewSlot({ day: 'Mon', slot: '08:30-11:30' });
+    toast.success('Slot added to list');
   };
 
   const removeSlot = (index) => {
     setAvailability(availability.filter((_, i) => i !== index));
   };
 
-  const updateSlot = (index, field, value) => {
-    const updated = [...availability];
-    updated[index] = { ...updated[index], [field]: value };
-    setAvailability(updated);
-    setEditingIndex(null);
-  };
-
-  const startEdit = (index) => {
-    setEditingIndex(index);
-  };
-
-  const cancelEdit = () => {
-    setEditingIndex(null);
-  };
-
   if (!teacher) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] flex flex-col">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6">
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="absolute inset-0 bg-background/80 backdrop-blur-md"
+        onClick={onClose}
+      />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 20 }}
+        className="relative w-full max-w-2xl bg-card border rounded-3xl shadow-premium overflow-hidden flex flex-col max-h-[90vh]"
+      >
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">{teacher.name}</h2>
-            <p className="text-sm text-gray-500 mt-1">
-              Teachers are fully available by default. Add slots below to block out time • {teacher.branch}
-            </p>
+        <div className="p-6 border-b flex items-center justify-between bg-muted/5">
+          <div className="flex items-center gap-4">
+            <div className="h-12 w-12 rounded-2xl bg-destructive/10 flex items-center justify-center text-destructive shadow-sm">
+              <CalendarOff size={24} />
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold tracking-tight">Block Schedule</h2>
+              <p className="text-sm text-muted-foreground font-medium uppercase tracking-wider mt-0.5">
+                {teacher.name} • {teacher.branch}
+              </p>
+            </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-          >
-            <X className="w-6 h-6" />
-          </button>
+          <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full">
+            <X size={20} />
+          </Button>
         </div>
 
-        {/* Body */}
-        <div className="flex-1 overflow-y-auto p-6">
-          {/* Info */}
-          <div className="mb-4 rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-900">
-            Remove or add entries below to mark when this teacher is <span className="font-semibold">unavailable</span>. No entries means they can teach any time.
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-6 custom-scrollbar space-y-6">
+          <div className="bg-primary/5 border border-primary/20 rounded-2xl p-4 flex items-start gap-3">
+            <AlertCircle className="text-primary shrink-0 mt-0.5" size={18} />
+            <p className="text-sm text-slate-600 leading-relaxed">
+              By default, teachers are available for all slots. Add specific days and times below to <span className="font-bold text-primary">block</span> them from being assigned.
+            </p>
           </div>
 
-          {/* Current Unavailability */}
-          <div className="mb-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Blocked Time Slots</h3>
-            
-            {availability.length === 0 ? (
-              <div className="text-center text-gray-500 py-8 border border-dashed border-gray-300 rounded-lg">
-                No blocked slots — this teacher is fully available.
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {availability.map((slot, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center justify-between p-4 bg-gray-50 border border-gray-200 rounded-lg"
+          <section>
+            <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-4">Currently Blocked</h3>
+            <div className="space-y-3">
+              <AnimatePresence mode="popLayout">
+                {availability.length === 0 ? (
+                  <motion.div 
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="text-center py-12 border-2 border-dashed rounded-3xl opacity-50"
                   >
-                    {editingIndex === index ? (
-                      <div className="flex items-center space-x-3 flex-1">
-                        <select
-                          value={slot.day}
-                          onChange={(e) => updateSlot(index, 'day', e.target.value)}
-                          className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        >
-                          {days.map(day => (
-                            <option key={day} value={day}>{day}</option>
-                          ))}
-                        </select>
-                        <input
-                          type="text"
-                          value={slot.slot}
-                          onChange={(e) => updateSlot(index, 'slot', e.target.value)}
-                          placeholder="08:30-11:30"
-                          pattern="^\d{2}:\d{2}-\d{2}:\d{2}$"
-                          className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                        <button
-                          onClick={cancelEdit}
-                          className="px-3 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 text-sm"
-                        >
-                          Cancel
-                        </button>
+                    <p className="text-sm font-medium text-muted-foreground">No slots blocked. Fully available.</p>
+                  </motion.div>
+                ) : (
+                  availability.map((slot, index) => (
+                    <motion.div
+                      key={`${slot.day}-${slot.slot}-${index}`}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      className="flex items-center justify-between p-4 bg-muted/30 border rounded-2xl group hover:border-primary/20 transition-all"
+                    >
+                      <div className="flex items-center gap-6">
+                        <div className="bg-background px-3 py-1 rounded-xl border font-bold text-sm text-primary shadow-sm min-w-[60px] text-center">
+                          {slot.day}
+                        </div>
+                        <div className="flex items-center gap-2 text-slate-600 font-medium">
+                          <Clock size={14} className="text-muted-foreground" />
+                          {slot.slot}
+                        </div>
                       </div>
-                    ) : (
-                      <>
-                        <div className="flex items-center space-x-4">
-                          <span className="font-semibold text-gray-900 min-w-[60px]">{slot.day}</span>
-                          <span className="text-gray-700">{slot.slot}</span>
-                        </div>
-                        <div className="flex space-x-2">
-                          <button
-                            onClick={() => startEdit(index)}
-                            className="p-2 text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                            title="Edit"
-                          >
-                            <Edit2 className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => removeSlot(index)}
-                            className="p-2 text-red-600 hover:bg-red-50 rounded transition-colors"
-                            title="Remove"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => removeSlot(index)}
+                        className="text-destructive hover:bg-destructive/10 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <Trash2 size={16} />
+                      </Button>
+                    </motion.div>
+                  ))
+                )}
+              </AnimatePresence>
+            </div>
+          </section>
 
-          {/* Add New Slot */}
-          <div className="border-t border-gray-200 pt-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Add Unavailable Slot</h3>
-            <div className="flex items-center space-x-3">
+          <section className="pt-4 border-t">
+            <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-4">Add Unavailable Block</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <select
                 value={newSlot.day}
                 onChange={(e) => setNewSlot({ ...newSlot, day: e.target.value })}
-                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="h-11 px-4 bg-muted/30 border border-muted-foreground/20 rounded-xl text-sm font-bold focus:bg-background outline-none transition-all cursor-pointer"
               >
                 {days.map(day => (
                   <option key={day} value={day}>{day}</option>
                 ))}
               </select>
-              <input
-                type="text"
+              <Input
                 value={newSlot.slot}
                 onChange={(e) => setNewSlot({ ...newSlot, slot: e.target.value })}
                 placeholder="08:30-11:30"
-                pattern="^\d{2}:\d{2}-\d{2}:\d{2}$"
-                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 flex-1"
+                className="rounded-xl font-medium"
               />
-              <button
-                onClick={addSlot}
-                className="flex items-center space-x-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Add</span>
-              </button>
+              <Button onClick={addSlot} variant="secondary" className="rounded-xl gap-2 font-bold uppercase tracking-wider text-[10px] h-11">
+                <Plus size={16} />
+                Add Block
+              </Button>
             </div>
-            <p className="text-xs text-gray-500 mt-2">
-              Format: HH:mm-HH:mm (e.g., 08:30-11:30, 14:30-17:00)
-            </p>
-          </div>
+          </section>
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end space-x-3 p-6 border-t border-gray-200">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
-          >
-            Cancel
-          </button>
-          <button
+        <div className="p-6 border-t bg-muted/5 flex justify-end gap-3">
+          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button 
             onClick={handleSave}
             disabled={loading}
-            className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+            className="shadow-premium rounded-xl px-8"
           >
-            <Save className="w-4 h-4" />
-            <span>Save Availability</span>
-          </button>
+            {loading ? <Loader2 className="animate-spin" size={18} /> : 'Save Availability'}
+          </Button>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 };
 
 export default TeacherAvailabilityModal;
-
-
-
-
-
-

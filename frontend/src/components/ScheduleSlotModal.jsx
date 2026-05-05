@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { X, Save, Clock4 } from 'lucide-react';
+import { X, Save, Clock4, Calendar, User, ArrowRight, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { Button } from './ui/Button';
+import { Input } from './ui/Input';
+import { motion, AnimatePresence } from 'framer-motion';
+import { cn } from './ui/Button';
 
 const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -17,29 +21,24 @@ const ScheduleSlotModal = ({ open, scheduleItem, teachers = [], onClose, onSubmi
       const [start, end] = scheduleItem.slot.split('-');
       setStartTime(start);
       setEndTime(end);
-      setTeacherId(scheduleItem.teacherId?._id || scheduleItem.teacherId);
+      setTeacherId(typeof scheduleItem.teacherId === 'object' ? scheduleItem.teacherId._id : scheduleItem.teacherId);
     }
   }, [scheduleItem, open]);
 
   const slotPresets = useMemo(() => {
-    const availabilitySlots =
-      scheduleItem?.teacherId?.availability?.map((slot) => slot.slot) || [];
+    const t = teachers.find(t => t._id === teacherId) || scheduleItem?.teacherId;
+    const availabilitySlots = t?.availability?.map((slot) => slot.slot) || [];
     const defaults = ['08:30-11:30', '11:30-14:30', '14:30-17:00'];
     return [...new Set([`${startTime}-${endTime}`, ...availabilitySlots, ...defaults])];
-  }, [scheduleItem, startTime, endTime]);
+  }, [scheduleItem, startTime, endTime, teachers, teacherId]);
 
   if (!open || !scheduleItem) return null;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!teacherId || !startTime || !endTime) {
-      toast.error('Please fill all fields');
-      return;
-    }
-    if (startTime >= endTime) {
-      toast.error('Start time must be before end time');
-      return;
-    }
+    if (!teacherId || !startTime || !endTime) return toast.error('Please fill all fields');
+    if (startTime >= endTime) return toast.error('Start time must be before end time');
+    
     setSaving(true);
     try {
       await onSubmit?.({
@@ -47,152 +46,154 @@ const ScheduleSlotModal = ({ open, scheduleItem, teachers = [], onClose, onSubmi
         source: {
           day: scheduleItem.day,
           slot: scheduleItem.slot,
-          teacherId: scheduleItem.teacherId?._id || scheduleItem.teacherId
+          teacherId: typeof scheduleItem.teacherId === 'object' ? scheduleItem.teacherId._id : scheduleItem.teacherId
         },
         target: { day, slot: `${startTime}-${endTime}`, teacherId }
       });
       onClose?.();
     } catch (error) {
       console.error('Failed to update schedule:', error);
-      // Error toast is handled by parent component
     } finally {
       setSaving(false);
     }
   };
 
-  const teacherOptions = teacherId && !teachers.some((t) => t._id === teacherId)
-    ? [
-        {
-          _id: teacherId,
-          name: scheduleItem.teacherId?.name || 'Current teacher',
-          branch: scheduleItem.teacherId?.branch || ''
-        },
-        ...teachers
-      ]
-    : teachers;
-
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-lg w-full overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-4 border-b">
-          <div>
-            <h2 className="text-lg font-semibold text-gray-900 flex items-center space-x-2">
-              <Clock4 className="w-5 h-5 text-blue-600" />
-              <span>Change Schedule Time</span>
-            </h2>
-            <p className="text-sm text-gray-500">
-              {scheduleItem.batchIds?.map((b) => b.name).join(', ')}
-            </p>
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6">
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="absolute inset-0 bg-background/80 backdrop-blur-md"
+        onClick={onClose}
+      />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 20 }}
+        className="relative w-full max-w-lg bg-card border rounded-3xl shadow-premium overflow-hidden flex flex-col"
+      >
+        {/* Header */}
+        <div className="p-6 border-b flex items-center justify-between bg-muted/5">
+          <div className="flex items-center gap-4">
+            <div className="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-sm">
+              <Clock4 size={24} />
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold tracking-tight">Adjust Schedule</h2>
+              <p className="text-sm text-muted-foreground font-medium truncate max-w-[240px]">
+                {scheduleItem.batchIds?.map((b) => b.name).join(', ')}
+              </p>
+            </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 rounded-full hover:bg-gray-100"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full">
+            <X size={20} />
+          </Button>
         </div>
 
-        <form onSubmit={handleSubmit} className="px-6 py-4 space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Day
-            </label>
-            <select
-              value={day}
-              onChange={(e) => setDay(e.target.value)}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {days.map((d) => (
-                <option key={d} value={d}>
-                  {d}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Time span
-            </label>
-            <div className="flex items-center space-x-3">
-              <input
-                type="time"
-                value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <span className="text-xs text-gray-500">to</span>
-              <input
-                type="time"
-                value={endTime}
-                onChange={(e) => setEndTime(e.target.value)}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div className="flex flex-wrap gap-2 mt-3">
-              {slotPresets.map((preset) => {
-                const [presetStart, presetEnd] = preset.split('-');
-                const isActive = presetStart === startTime && presetEnd === endTime;
-                return (
+        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1 flex items-center gap-2">
+                <Calendar size={12} className="text-primary" />
+                Select Day
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {days.map((d) => (
                   <button
+                    key={d}
                     type="button"
-                    key={preset}
-                    onClick={() => {
-                      setStartTime(presetStart);
-                      setEndTime(presetEnd);
-                    }}
-                    className={`px-3 py-1 rounded-full border text-sm transition ${
-                      isActive
-                        ? 'bg-blue-600 text-white border-blue-600'
-                        : 'bg-white text-gray-700 border-gray-200 hover:border-blue-300'
-                    }`}
+                    onClick={() => setDay(d)}
+                    className={cn(
+                      "px-3 py-1.5 rounded-xl text-xs font-bold transition-all border",
+                      day === d 
+                        ? "bg-primary text-primary-foreground border-primary shadow-md" 
+                        : "bg-background border-border hover:border-primary/40"
+                    )}
                   >
-                    {presetStart} – {presetEnd}
+                    {d}
                   </button>
-                );
-              })}
+                ))}
+              </div>
             </div>
-          </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Teacher
-            </label>
-            <select
-              value={teacherId}
-              onChange={(e) => setTeacherId(e.target.value)}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {teacherOptions.map((teacher) => (
-                <option key={teacher._id} value={teacher._id}>
-                  {teacher.name} • {teacher.branch}
-                </option>
-              ))}
-            </select>
+            <div className="space-y-2">
+              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1 flex items-center gap-2">
+                <Clock4 size={12} className="text-primary" />
+                Time Interval
+              </label>
+              <div className="flex items-center gap-3">
+                <Input
+                  type="time"
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
+                  className="rounded-xl font-bold text-center"
+                />
+                <ArrowRight size={16} className="text-muted-foreground" />
+                <Input
+                  type="time"
+                  value={endTime}
+                  onChange={(e) => setEndTime(e.target.value)}
+                  className="rounded-xl font-bold text-center"
+                />
+              </div>
+              <div className="flex flex-wrap gap-2 mt-3">
+                {slotPresets.map((preset) => {
+                  const [pStart, pEnd] = preset.split('-');
+                  const isActive = pStart === startTime && pEnd === endTime;
+                  return (
+                    <button
+                      type="button"
+                      key={preset}
+                      onClick={() => { setStartTime(pStart); setEndTime(pEnd); }}
+                      className={cn(
+                        "px-3 py-1.5 rounded-full border text-[11px] font-bold transition-all",
+                        isActive
+                          ? "bg-primary/10 text-primary border-primary shadow-sm"
+                          : "bg-background text-slate-600 border-border hover:border-primary/40"
+                      )}
+                    >
+                      {pStart} – {pEnd}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1 flex items-center gap-2">
+                <User size={12} className="text-primary" />
+                Assigned Teacher
+              </label>
+              <select
+                value={teacherId}
+                onChange={(e) => setTeacherId(e.target.value)}
+                className="w-full h-11 px-4 bg-muted/30 border border-muted-foreground/20 rounded-xl text-sm font-medium focus:bg-background focus:ring-2 focus:ring-primary outline-none transition-all cursor-pointer"
+              >
+                {teachers.map((t) => (
+                  <option key={t._id} value={t._id}>
+                    {t.name} • {t.branch}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         </form>
 
-        <div className="flex items-center justify-end px-6 py-4 border-t space-x-3">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
+        {/* Footer */}
+        <div className="p-6 border-t bg-muted/5 flex justify-end gap-3">
+          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button 
             onClick={handleSubmit}
             disabled={saving}
-            className="px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+            className="shadow-premium rounded-xl px-8"
           >
-            {saving ? 'Saving…' : 'Save changes'}
-          </button>
+            {saving ? <Loader2 className="animate-spin" size={18} /> : 'Save Changes'}
+          </Button>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 };
 
 export default ScheduleSlotModal;
-

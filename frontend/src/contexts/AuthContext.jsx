@@ -50,6 +50,19 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const register = async (userData) => {
+    try {
+      const response = await api.post('/auth/register', userData);
+      const { token, user } = response.data.data;
+      localStorage.setItem('token', token);
+      setUser(user);
+      return user;
+    } catch (error) {
+      console.error('Register error:', error.response?.data || error.message);
+      throw error;
+    }
+  };
+
   const logout = () => {
     localStorage.removeItem('token');
     setUser(null);
@@ -59,9 +72,11 @@ export const AuthProvider = ({ children }) => {
     user,
     loading,
     login,
+    register,
     logout,
     checkAuth
   };
+
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

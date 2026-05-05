@@ -1,7 +1,12 @@
 import { useState, useEffect } from 'react';
-import { X, Plus, Trash2, Edit2, Save, XCircle } from 'lucide-react';
+import { X, Plus, Trash2, Edit2, Save, XCircle, GraduationCap, Mail, Phone, Hash, Loader2 } from 'lucide-react';
 import { api } from '../utils/api';
 import toast from 'react-hot-toast';
+import { Button } from './ui/Button';
+import { Input } from './ui/Input';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from './ui/Card';
+import { motion, AnimatePresence } from 'framer-motion';
+import { cn } from './ui/Button';
 
 const BatchDetailsModal = ({ batch, onClose, onUpdate, user }) => {
   const [students, setStudents] = useState([]);
@@ -16,21 +21,17 @@ const BatchDetailsModal = ({ batch, onClose, onUpdate, user }) => {
   });
 
   useEffect(() => {
-    if (batch) {
-      fetchBatchDetails();
-    }
+    if (batch) fetchBatchDetails();
   }, [batch]);
 
   const fetchBatchDetails = async () => {
     if (!batch) return;
-    
     setLoading(true);
     try {
       const response = await api.get(`/batches/${batch._id}`);
       setStudents(response.data.data.batch.students || []);
     } catch (error) {
       toast.error('Failed to fetch batch details');
-      console.error(error);
     } finally {
       setLoading(false);
     }
@@ -38,12 +39,7 @@ const BatchDetailsModal = ({ batch, onClose, onUpdate, user }) => {
 
   const handleAddStudent = async (e) => {
     e.preventDefault();
-    
-    if (!newStudent.name.trim()) {
-      toast.error('Student name is required');
-      return;
-    }
-
+    if (!newStudent.name.trim()) return toast.error('Student name is required');
     setLoading(true);
     try {
       const response = await api.post(`/batches/${batch._id}/students`, newStudent);
@@ -60,10 +56,6 @@ const BatchDetailsModal = ({ batch, onClose, onUpdate, user }) => {
   };
 
   const handleDeleteStudent = async (studentId) => {
-    if (!confirm('Are you sure you want to delete this student?')) {
-      return;
-    }
-
     setLoading(true);
     try {
       const response = await api.delete(`/batches/${batch._id}/students/${studentId}`);
@@ -97,146 +89,147 @@ const BatchDetailsModal = ({ batch, onClose, onUpdate, user }) => {
   if (!batch) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6">
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="absolute inset-0 bg-background/80 backdrop-blur-md"
+        onClick={onClose}
+      />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 20 }}
+        className="relative w-full max-w-4xl bg-card border rounded-3xl shadow-premium overflow-hidden flex flex-col max-h-[90vh]"
+      >
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">{batch.name}</h2>
-            <p className="text-sm text-gray-500 mt-1">
-              {batch.branch} • {students.length} students
-            </p>
+        <div className="p-6 border-b flex items-center justify-between bg-muted/5">
+          <div className="flex items-center gap-4">
+            <div className="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-sm">
+              <GraduationCap size={24} />
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold tracking-tight">{batch.name}</h2>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground font-medium uppercase tracking-wider mt-0.5">
+                <span>{batch.branch}</span>
+                <div className="w-1 h-1 rounded-full bg-border" />
+                <span>{students.length} Students</span>
+              </div>
+            </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-          >
-            <X className="w-6 h-6" />
-          </button>
+          <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full">
+            <X size={20} />
+          </Button>
         </div>
 
-        {/* Body */}
-        <div className="flex-1 overflow-y-auto p-6">
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-6 custom-scrollbar space-y-8">
           {/* Subjects */}
-          <div className="mb-6">
-            <h3 className="text-sm font-semibold text-gray-700 mb-2">Subjects</h3>
+          <section>
+            <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-4">Curriculum</h3>
             <div className="flex flex-wrap gap-2">
               {batch.subjects.map((subject) => (
                 <span
                   key={subject}
-                  className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm"
+                  className="px-4 py-1.5 bg-primary/5 text-primary rounded-full text-xs font-bold border border-primary/10 shadow-sm"
                 >
                   {subject}
                 </span>
               ))}
             </div>
-          </div>
+          </section>
 
           {/* Students Section */}
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Students</h3>
+          <section className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xl font-bold tracking-tight">Student Roster</h3>
               {canEdit && (
-                <button
-                  onClick={() => setShowAddForm(!showAddForm)}
-                  className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Add Student</span>
-                </button>
+                <Button size="sm" onClick={() => setShowAddForm(!showAddForm)} className="rounded-full gap-2 shadow-premium">
+                  {showAddForm ? <X size={14} /> : <Plus size={14} />}
+                  <span>{showAddForm ? 'Cancel' : 'Add Student'}</span>
+                </Button>
               )}
             </div>
 
             {/* Add Student Form */}
-            {showAddForm && canEdit && (
-              <div className="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                <form onSubmit={handleAddStudent}>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Name <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={newStudent.name}
-                        onChange={(e) => setNewStudent({ ...newStudent, name: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="Student Name"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Roll Number
-                      </label>
-                      <input
-                        type="text"
-                        value={newStudent.rollNumber}
-                        onChange={(e) => setNewStudent({ ...newStudent, rollNumber: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="Roll Number"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Email
-                      </label>
-                      <input
-                        type="email"
-                        value={newStudent.email}
-                        onChange={(e) => setNewStudent({ ...newStudent, email: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="email@example.com"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Phone
-                      </label>
-                      <input
-                        type="text"
-                        value={newStudent.phone}
-                        onChange={(e) => setNewStudent({ ...newStudent, phone: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="Phone Number"
-                      />
-                    </div>
-                  </div>
-                  <div className="flex space-x-2 mt-4">
-                    <button
-                      type="submit"
-                      disabled={loading}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-                    >
-                      Add Student
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowAddForm(false);
-                        setNewStudent({ name: '', email: '', rollNumber: '', phone: '' });
-                      }}
-                      className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </form>
-              </div>
-            )}
+            <AnimatePresence>
+              {showAddForm && canEdit && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="overflow-hidden"
+                >
+                  <Card className="bg-muted/30 border-dashed border-2 mb-6">
+                    <CardContent className="p-6">
+                      <form onSubmit={handleAddStudent} className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">Name</label>
+                            <Input
+                              required
+                              value={newStudent.name}
+                              onChange={(e) => setNewStudent({ ...newStudent, name: e.target.value })}
+                              placeholder="Student Name"
+                              className="bg-background"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">Roll Number</label>
+                            <Input
+                              value={newStudent.rollNumber}
+                              onChange={(e) => setNewStudent({ ...newStudent, rollNumber: e.target.value })}
+                              placeholder="ID / Roll Number"
+                              className="bg-background"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">Email</label>
+                            <Input
+                              type="email"
+                              value={newStudent.email}
+                              onChange={(e) => setNewStudent({ ...newStudent, email: e.target.value })}
+                              placeholder="email@example.com"
+                              className="bg-background"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">Phone</label>
+                            <Input
+                              value={newStudent.phone}
+                              onChange={(e) => setNewStudent({ ...newStudent, phone: e.target.value })}
+                              placeholder="+1 (555) 000-0000"
+                              className="bg-background"
+                            />
+                          </div>
+                        </div>
+                        <div className="flex justify-end gap-3 pt-2">
+                          <Button variant="secondary" type="button" onClick={() => setShowAddForm(false)} className="rounded-xl">Cancel</Button>
+                          <Button type="submit" disabled={loading} className="rounded-xl shadow-premium">
+                            {loading ? <Loader2 className="animate-spin" size={16} /> : 'Save Student'}
+                          </Button>
+                        </div>
+                      </form>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* Students List */}
-            {loading && students.length === 0 ? (
-              <div className="text-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-              </div>
-            ) : students.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                No students added yet
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {students.map((student, index) => (
+            <div className="space-y-3">
+              {loading && students.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12">
+                  <Loader2 className="animate-spin text-primary" size={32} />
+                  <p className="text-sm text-muted-foreground mt-4">Loading roster...</p>
+                </div>
+              ) : students.length === 0 ? (
+                <div className="text-center py-12 border-2 border-dashed rounded-3xl opacity-50">
+                  <p className="text-sm font-medium text-muted-foreground">No students enrolled in this batch yet.</p>
+                </div>
+              ) : (
+                students.map((student, index) => (
                   <StudentRow
                     key={student._id || index}
                     student={student}
@@ -246,18 +239,19 @@ const BatchDetailsModal = ({ batch, onClose, onUpdate, user }) => {
                     onCancel={() => setEditingStudent(null)}
                     onSave={(data) => handleUpdateStudent(student._id, data)}
                     onDelete={() => handleDeleteStudent(student._id)}
+                    index={index}
                   />
-                ))}
-              </div>
-            )}
-          </div>
+                ))
+              )}
+            </div>
+          </section>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 };
 
-const StudentRow = ({ student, canEdit, isEditing, onEdit, onCancel, onSave, onDelete }) => {
+const StudentRow = ({ student, canEdit, isEditing, onEdit, onCancel, onSave, onDelete, index }) => {
   const [formData, setFormData] = useState({
     name: student.name || '',
     email: student.email || '',
@@ -265,118 +259,105 @@ const StudentRow = ({ student, canEdit, isEditing, onEdit, onCancel, onSave, onD
     phone: student.phone || ''
   });
 
-  const handleSave = () => {
-    if (!formData.name.trim()) {
-      alert('Name is required');
-      return;
-    }
-    onSave(formData);
-  };
-
   if (isEditing) {
     return (
-      <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-          <input
-            type="text"
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.98 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="p-6 bg-primary/5 border border-primary/20 rounded-2xl"
+      >
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Input
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="Name *"
+            className="bg-background"
           />
-          <input
-            type="text"
+          <Input
             value={formData.rollNumber}
             onChange={(e) => setFormData({ ...formData, rollNumber: e.target.value })}
-            className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="Roll Number"
+            className="bg-background"
           />
-          <input
+          <Input
             type="email"
             value={formData.email}
             onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-            className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="Email"
+            className="bg-background"
           />
-          <input
-            type="text"
+          <Input
             value={formData.phone}
             onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-            className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="Phone"
+            className="bg-background"
           />
         </div>
-        <div className="flex space-x-2 mt-3">
-          <button
-            onClick={handleSave}
-            className="flex items-center space-x-1 px-3 py-1.5 bg-green-600 text-white rounded hover:bg-green-700 text-sm"
-          >
-            <Save className="w-4 h-4" />
-            <span>Save</span>
-          </button>
-          <button
-            onClick={onCancel}
-            className="flex items-center space-x-1 px-3 py-1.5 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 text-sm"
-          >
-            <XCircle className="w-4 h-4" />
-            <span>Cancel</span>
-          </button>
+        <div className="flex justify-end gap-3 mt-4">
+          <Button variant="ghost" size="sm" onClick={onCancel}>Cancel</Button>
+          <Button size="sm" onClick={() => onSave(formData)} className="gap-2">
+            <Save size={14} />
+            Save Changes
+          </Button>
         </div>
-      </div>
+      </motion.div>
     );
   }
 
   return (
-    <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors">
-      <div className="flex items-center justify-between">
-        <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div>
-            <p className="text-sm font-medium text-gray-900">{student.name || 'N/A'}</p>
-            <p className="text-xs text-gray-500">Name</p>
+    <motion.div
+      initial={{ opacity: 0, x: -20 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ delay: index * 0.05 }}
+      className="p-4 bg-card border rounded-2xl hover:border-primary/20 hover:shadow-premium transition-all duration-300 group"
+    >
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-4 flex-1 min-w-0">
+          <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground font-bold text-xs shrink-0 group-hover:bg-primary/10 group-hover:text-primary transition-colors">
+            {student.name?.[0]?.toUpperCase()}
           </div>
-          <div>
-            <p className="text-sm text-gray-700">{student.rollNumber || 'N/A'}</p>
-            <p className="text-xs text-gray-500">Roll Number</p>
-          </div>
-          <div>
-            <p className="text-sm text-gray-700">{student.email || 'N/A'}</p>
-            <p className="text-xs text-gray-500">Email</p>
-          </div>
-          <div>
-            <p className="text-sm text-gray-700">{student.phone || 'N/A'}</p>
-            <p className="text-xs text-gray-500">Phone</p>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 flex-1 min-w-0">
+            <div className="min-w-0">
+              <p className="text-sm font-bold truncate">{student.name}</p>
+              <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider mt-0.5">Full Name</p>
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-slate-600 truncate flex items-center gap-1.5">
+                <Hash size={12} className="text-muted-foreground" />
+                {student.rollNumber || 'N/A'}
+              </p>
+              <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider mt-0.5">Roll No</p>
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-slate-600 truncate flex items-center gap-1.5">
+                <Mail size={12} className="text-muted-foreground" />
+                {student.email || 'N/A'}
+              </p>
+              <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider mt-0.5">Email Address</p>
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-slate-600 truncate flex items-center gap-1.5">
+                <Phone size={12} className="text-muted-foreground" />
+                {student.phone || 'N/A'}
+              </p>
+              <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider mt-0.5">Contact</p>
+            </div>
           </div>
         </div>
+
         {canEdit && (
-          <div className="flex space-x-2 ml-4">
-            <button
-              onClick={onEdit}
-              className="p-2 text-blue-600 hover:bg-blue-50 rounded transition-colors"
-              title="Edit"
-            >
-              <Edit2 className="w-4 h-4" />
-            </button>
-            <button
-              onClick={onDelete}
-              className="p-2 text-red-600 hover:bg-red-50 rounded transition-colors"
-              title="Delete"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
+          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <Button variant="ghost" size="icon" onClick={onEdit} className="h-8 w-8 rounded-lg text-primary hover:bg-primary/10">
+              <Edit2 size={14} />
+            </Button>
+            <Button variant="ghost" size="icon" onClick={onDelete} className="h-8 w-8 rounded-lg text-destructive hover:bg-destructive/10">
+              <Trash2 size={14} />
+            </Button>
           </div>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 };
 
 export default BatchDetailsModal;
-
-
-
-
-
-
-
-
-

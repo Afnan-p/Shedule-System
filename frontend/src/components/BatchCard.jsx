@@ -1,5 +1,6 @@
 import { useDrag } from 'react-dnd';
-import { Users, Eye } from 'lucide-react';
+import { Users, Eye, GripVertical, CheckCircle2 } from 'lucide-react';
+import { cn } from './ui/Button';
 
 const BatchCard = ({ batch, isSelected, onToggle, onView, selectedBatches }) => {
   const [{ isDragging }, drag] = useDrag(() => ({
@@ -30,84 +31,66 @@ const BatchCard = ({ batch, isSelected, onToggle, onView, selectedBatches }) => 
     <div
       ref={drag}
       onClick={onToggle}
-      className={`
-        group relative p-4 rounded-xl cursor-move transition-all duration-300 shadow-sm 
-        border hover:shadow-md backdrop-blur-sm
-        ${isSelected ? 
-          "border-blue-500 bg-blue-50" : 
-          "border-gray-200 bg-white/90 hover:bg-gray-50/90"}
-        ${isDragging ? "opacity-40 scale-[0.98]" : "opacity-100"}
-      `}
-    >
-
-      {/* Glow Ring When Selected */}
-      {isSelected && (
-        <div className="absolute inset-0 rounded-xl border-2 border-blue-400 shadow-[0px_0px_12px_rgba(30,135,255,0.5)] pointer-events-none"></div>
+      className={cn(
+        "group relative p-4 rounded-2xl cursor-grab active:cursor-grabbing transition-all duration-300 border shadow-sm",
+        isSelected 
+          ? "border-primary bg-primary/5 ring-1 ring-primary/20" 
+          : "border-border bg-card hover:border-primary/50 hover:shadow-premium",
+        isDragging ? "opacity-40 scale-95 border-dashed border-primary" : "opacity-100 scale-100"
       )}
+    >
+      <div className="flex items-start gap-3">
+        {/* Drag Handle */}
+        <div className="mt-1 text-muted-foreground group-hover:text-primary transition-colors">
+          <GripVertical size={16} />
+        </div>
 
-      <div className="flex items-start justify-between space-x-3">
-        {/* Left Section */}
-        <div className="flex-1">
-          <h3 className="font-semibold text-gray-900 text-sm tracking-wide ">
-            {batch.name}
-          </h3>
+        {/* Content */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="font-bold text-sm tracking-tight truncate">
+              {batch.name}
+            </h3>
+            {isSelected && (
+              <CheckCircle2 size={16} className="text-primary shrink-0" />
+            )}
+          </div>
 
-          {/* Students */}
-          <div className="flex items-center space-x-2 mt-1">
-            <Users className="w-3.5 h-3.5 text-gray-500" />
-            <span className="text-xs text-gray-600">
-              {batch.size} students
-            </span>
+          <div className="flex items-center gap-2 mt-1.5">
+            <div className="flex items-center gap-1 text-[11px] font-medium text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded-md">
+              <Users size={12} />
+              <span>{batch.size}</span>
+            </div>
+            <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">{batch.branch}</span>
           </div>
 
           {/* Subjects */}
-          <div className="mt-2 flex flex-wrap gap-1.5">
+          <div className="mt-3 flex flex-wrap gap-1.5">
             {batch.subjects.slice(0, 2).map((subject) => (
               <span
                 key={subject}
-                className="text-[10px] px-2 py-0.5 bg-gray-100 text-gray-700 rounded-full font-medium shadow-sm"
+                className="text-[10px] px-2 py-0.5 bg-primary/10 text-primary rounded-full font-bold border border-primary/20"
               >
                 {subject}
               </span>
             ))}
             {batch.subjects.length > 2 && (
-              <span className="text-[10px] text-gray-500 font-medium">
+              <span className="text-[10px] font-bold text-muted-foreground px-1">
                 +{batch.subjects.length - 2}
               </span>
             )}
           </div>
-
-          {/* Branch */}
-          <div className="mt-2 text-[11px] text-gray-500 font-medium">
-            {batch.branch}
-          </div>
         </div>
 
-        {/* Right Section */}
-        <div className="flex flex-col items-center space-y-2">
-          {/* View Button */}
-          {onView && (
-            <button
-              onClick={handleViewClick}
-              className="
-                p-2 rounded-lg text-gray-600 hover:bg-gray-200 transition-all
-                hover:shadow-sm
-              "
-              title="View Students"
-            >
-              <Eye className="w-4 h-4" />
-            </button>
-          )}
-
-          {/* Tick Icon When Selected */}
-          {isSelected && (
-            <div className="
-              w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center 
-              text-xs font-bold shadow-sm
-            ">
-              ✓
-            </div>
-          )}
+        {/* Actions */}
+        <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button
+            onClick={handleViewClick}
+            className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all"
+            title="View Details"
+          >
+            <Eye size={16} />
+          </button>
         </div>
       </div>
     </div>

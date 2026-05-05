@@ -14,12 +14,32 @@ ReactDOM.createRoot(document.getElementById('root')).render(
       <DndProvider backend={HTML5Backend}>
         <AuthProvider>
           <App />
-          <Toaster position="top-right" />
+          <Toaster 
+            position="top-right" 
+            toastOptions={{
+              className: 'glass shadow-premium rounded-2xl text-sm font-medium',
+              duration: 4000,
+              style: {
+                background: 'rgba(255, 255, 255, 0.8)',
+                color: '#1e293b',
+                backdropFilter: 'blur(12px)',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+              },
+              success: {
+                iconTheme: {
+                  primary: '#10b981',
+                  secondary: '#fff',
+                },
+              },
+            }}
+          />
+
         </AuthProvider>
       </DndProvider>
     </BrowserRouter>
   </React.StrictMode>
 );
+
 
 
 

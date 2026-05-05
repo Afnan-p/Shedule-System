@@ -1,17 +1,20 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
 import Login from './pages/Login';
+import Signup from './pages/Signup';
 import Dashboard from './pages/Dashboard';
 import AuditLog from './pages/AuditLog';
 import PrivateRoute from './components/PrivateRoute';
+import { Loader2 } from 'lucide-react';
 
 function App() {
   const { user, loading } = useAuth();
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-950">
+        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+        <p className="mt-4 text-sm font-medium text-muted-foreground">Loading your workspace...</p>
       </div>
     );
   }
@@ -21,6 +24,10 @@ function App() {
       <Route
         path="/login"
         element={user ? <Navigate to="/" replace /> : <Login />}
+      />
+      <Route
+        path="/signup"
+        element={user ? <Navigate to="/" replace /> : <Signup />}
       />
       <Route
         path="/"
@@ -43,7 +50,9 @@ function App() {
   );
 }
 
+
 export default App;
+
 
 
 

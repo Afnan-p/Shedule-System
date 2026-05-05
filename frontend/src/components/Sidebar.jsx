@@ -1,5 +1,8 @@
-import { X, Menu, Search } from 'lucide-react';
+import { X, Menu, Search, Filter, CheckCircle2, Circle } from 'lucide-react';
 import BatchCard from './BatchCard';
+import { Button } from './ui/Button';
+import { Input } from './ui/Input';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const Sidebar = ({
   open,
@@ -35,142 +38,119 @@ const Sidebar = ({
       {/* Mobile toggle button */}
       <button
         onClick={onToggle}
-        className="md:hidden fixed top-16 left-2 z-50 p-2 bg-white shadow-lg rounded-xl border border-gray-200"
+        className="md:hidden fixed bottom-6 right-6 z-50 p-4 bg-primary text-primary-foreground shadow-premium rounded-full"
       >
-        <Menu className="w-5 h-5" />
+        {open ? <X size={24} /> : <Menu size={24} />}
       </button>
 
-      {/* Sidebar */}
-      <div
-        className={`
-          ${open ? 'translate-x-0' : '-translate-x-full'}
-          fixed md:relative z-40
-          w-80 h-full 
-          bg-white/90 backdrop-blur-xl 
-          border-r border-gray-200
-          shadow-lg md:shadow-none
-          transform transition-transform duration-300 ease-in-out
-          flex flex-col
-        `}
+      {/* Sidebar Container */}
+      <motion.aside
+        initial={false}
+        animate={{ 
+          width: open ? '340px' : '0px',
+          opacity: open ? 1 : 0
+        }}
+        className="relative h-full bg-background border-r flex flex-col overflow-hidden transition-all duration-300 ease-in-out z-40"
       >
-        {/* Header */}
-        <div className="p-4 border-b border-gray-200 flex items-center justify-between bg-white/60 backdrop-blur-md">
-          <h2 className="text-lg font-semibold text-gray-900 tracking-wide">
-            Batches
-          </h2>
-          <button
-            onClick={onToggle}
-            className="md:hidden p-1.5 hover:bg-gray-100 rounded-lg transition"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Search & Filters */}
-        <div className="p-4 border-b border-gray-200 space-y-4 bg-white/50 backdrop-blur-md">
-          {/* Search Box */}
-          <div className="relative">
-            <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-500" />
-            <input
-              type="text"
-              placeholder="Search batches..."
-              value={searchTerm}
-              onChange={(e) => onSearchChange(e.target.value)}
-              className="
-                w-full pl-10 pr-3 py-2 
-                border border-gray-300 rounded-lg 
-                bg-white/80 backdrop-blur 
-                text-sm
-                focus:ring-2 focus:ring-blue-500 
-                outline-none transition
-              "
-            />
+        <div className="w-[340px] flex flex-col h-full">
+          {/* Header */}
+          <div className="p-6 flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-bold tracking-tight">Batches</h2>
+              <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider mt-1">
+                {batches.length} Available
+              </p>
+            </div>
+            {selectedBatches.length > 0 && (
+              <Button variant="ghost" size="sm" onClick={clearSelection} className="text-xs h-8 px-2 text-destructive hover:text-destructive hover:bg-destructive/10">
+                Clear ({selectedBatches.length})
+              </Button>
+            )}
           </div>
 
-          {/* Subject Filter */}
-          <select
-            value={subjectFilter}
-            onChange={(e) => onSubjectFilterChange(e.target.value)}
-            className="
-              w-full px-3 py-2 
-              border border-gray-300 rounded-lg 
-              bg-white/80 backdrop-blur 
-              text-sm
-              focus:ring-2 focus:ring-blue-500 
-              outline-none transition
-            "
-          >
-            <option value="">All Subjects</option>
-            {subjects.map((subject) => (
-              <option key={subject} value={subject}>
-                {subject}
-              </option>
-            ))}
-          </select>
-
-          {/* Select Buttons */}
-          <div className="flex space-x-2">
-            <button
-              onClick={selectAll}
-              className="
-                flex-1 px-3 py-2 
-                text-sm rounded-lg 
-                bg-gray-100 hover:bg-gray-200 
-                transition shadow-sm
-              "
-            >
-              Select All
-            </button>
-            <button
-              onClick={clearSelection}
-              className="
-                flex-1 px-3 py-2 
-                text-sm rounded-lg 
-                bg-gray-100 hover:bg-gray-200 
-                transition shadow-sm
-              "
-            >
-              Clear
-            </button>
-          </div>
-
-          {/* Selected Count */}
-          {selectedBatches.length > 0 && (
-            <div className="text-xs text-blue-600 font-medium">
-              {selectedBatches.length} batch(es) selected
-            </div>
-          )}
-        </div>
-
-        {/* Batch Cards */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-3">
-          {batches.length === 0 ? (
-            <div className="text-center text-gray-500 text-sm py-8">
-              No batches found
-            </div>
-          ) : (
-            batches.map((batch) => (
-              <BatchCard
-                key={batch._id}
-                batch={batch}
-                isSelected={selectedBatches.includes(batch._id)}
-                onToggle={() => toggleBatchSelection(batch._id)}
-                onView={onViewBatch}
-                selectedBatches={selectedBatches}
-                allBatches={batches}
+          {/* Search & Filters */}
+          <div className="px-6 pb-6 space-y-4">
+            <div className="relative group">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+              <Input
+                placeholder="Search batches..."
+                value={searchTerm}
+                onChange={(e) => onSearchChange(e.target.value)}
+                className="pl-9 bg-muted/30 border-muted-foreground/20 focus:bg-background transition-all rounded-xl"
               />
-            ))
-          )}
+            </div>
+
+            <div className="flex space-x-2">
+              <div className="relative flex-1">
+                <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+                <select
+                  value={subjectFilter}
+                  onChange={(e) => onSubjectFilterChange(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 bg-muted/30 border border-muted-foreground/20 rounded-xl text-sm font-medium focus:ring-2 focus:ring-primary outline-none appearance-none transition-all cursor-pointer hover:bg-muted/50"
+                >
+                  <option value="">All Subjects</option>
+                  {subjects.map((subject) => (
+                    <option key={subject} value={subject}>{subject}</option>
+                  ))}
+                </select>
+              </div>
+              <Button variant="outline" size="sm" onClick={selectAll} className="rounded-xl border-slate-200">
+                Select All
+              </Button>
+            </div>
+          </div>
+
+          {/* Batch Cards List */}
+          <div className="flex-1 overflow-y-auto px-6 pb-6 space-y-3 custom-scrollbar">
+            <AnimatePresence mode="popLayout">
+              {batches.length === 0 ? (
+                <motion.div 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="flex flex-col items-center justify-center py-12 text-center"
+                >
+                  <div className="bg-muted p-4 rounded-full mb-4">
+                    <Search size={32} className="text-muted-foreground" />
+                  </div>
+                  <p className="text-sm font-medium text-muted-foreground">No batches found</p>
+                  <Button variant="link" onClick={() => onSearchChange('')} className="mt-1">
+                    Clear search
+                  </Button>
+                </motion.div>
+              ) : (
+                batches.map((batch, index) => (
+                  <motion.div
+                    key={batch._id}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                  >
+                    <BatchCard
+                      batch={batch}
+                      isSelected={selectedBatches.includes(batch._id)}
+                      onToggle={() => toggleBatchSelection(batch._id)}
+                      onView={onViewBatch}
+                    />
+                  </motion.div>
+                ))
+              )}
+            </AnimatePresence>
+          </div>
         </div>
-      </div>
+      </motion.aside>
 
       {/* Mobile overlay */}
-      {open && (
-        <div
-          className="md:hidden fixed inset-0 bg-black/50 z-30 backdrop-blur-sm"
-          onClick={onToggle}
-        />
-      )}
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="md:hidden fixed inset-0 bg-black/40 z-30 backdrop-blur-sm"
+            onClick={onToggle}
+          />
+        )}
+      </AnimatePresence>
     </>
   );
 };
